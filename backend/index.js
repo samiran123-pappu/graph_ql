@@ -1,4 +1,5 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
+dotenv.config();
 import express from 'express';
 
 import { connectDB } from './db/connectDB.js';
@@ -8,43 +9,45 @@ import cors from 'cors';
 import { ApolloServer } from "@apollo/server";
 import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer';
 import { expressMiddleware } from '@as-integrations/express5';
+import { buildContext } from "graphql-passport";
+import passport from 'passport';
+import session from "express-session";
+import connectMongo from "connect-mongodb-session"
 
 import mergedTypeDefs from "./typeDefs/index.js";
 import mergedResolvers from "./resolvers/index.js";
+import { configurePassport} from "./passport/passport.config.js";
+
+// Configure Passport
+await configurePassport();
 
 const app = express();
-const httpServer = http.createServer(app);
 const PORT = process.env.PORT || 4000;
-// 1. Define your GraphQL schema (same as TS)
-// const typeDefs = `#graphql
-//   type Book {
-//     title: String
-//     author: String
-//   }
+const httpServer = http.createServer(app);
+const MongoDBStore = connectMongo(session);
+const store = new MongoDBStore({
+  uri: process.env.MONGO_URI,
+  collections: "sessions",
+})
 
-//   type Query {
-//     books: [Book]
-//   }
-// `;
+store.on("error", (err) => console.log("SESSION STORE ERROR", err));
 
-// 2. Define your data
-// const books = [
-//   {
-//     title: "The Awakening",
-//     author: "Kate Chopin",
-//   },
-//   {
-//     title: "City of Glass",
-//     author: "Paul Auster",
-//   },
-// ];
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET,
+    resave: false, //this defies whether to save the session back to the store even if it was never modified on every request
+    saveUninitialized: false, //don't create session until something is stored
+    store: store,
+    cookie: {
+      maxAge: 1000 * 60 * 60 * 24 * 7, //1 week
+      httpOnly: true, //xss protection
+    },
+    store: store,
+  })
+);
 
-// 3. Define resolvers
-// const resolvers = {
-//   Query: {
-//     books: () => books,
-//   },
-// };
+app.use(passport.initialize());
+app.use(passport.session());
 
 // 4. Create the Apollo Server instance
 const server = new ApolloServer({
@@ -61,10 +64,13 @@ await server.start();
 // Express middleware setup
 app.use(
   '/',
-  cors(),
+  cors({
+    origin: process.env.CLIENT_URL,
+    credentials: true,
+  }),
   express.json(),
   expressMiddleware(server, {
-    context: async ({ req }) => ({req}),
+    context: async ({ req,res }) => buildContext({ req, res }),
   }),
 );
 
