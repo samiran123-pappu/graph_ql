@@ -50,7 +50,7 @@ const userResolver = {
                 throw new Error("error during login" + error.message);
             }
         },
-        logout: async(_,_, context) => {
+        logout: async(_, __, context) => {
             try {
                 await context.logout();
                 req.session.destroy(
@@ -74,7 +74,7 @@ const userResolver = {
         
     },
     Query:{
-        authUser: async(_, _, context) => {
+        authUser: async(_, __, context) => {
             try {
                 const user = context.getUser();
                 return user;

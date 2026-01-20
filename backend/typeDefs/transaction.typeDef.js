@@ -14,6 +14,7 @@ type Transaction {
 type Query {
     transactions: [Transaction!]
     transaction(transactionId: ID!):Transaction
+    # TODO => add categoryStatistics query
 }
 type Mutation {
     createTransaction(input: CreateTransactionInput!): Transaction!
