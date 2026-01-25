@@ -1,9 +1,8 @@
 import dotenv from 'dotenv';
 dotenv.config();
 import express from 'express';
-
 import { connectDB } from './db/connectDB.js';
-
+import path from "path";
 import http from 'http';
 import cors from 'cors';
 import { ApolloServer } from "@apollo/server";
@@ -20,7 +19,9 @@ import { configurePassport} from "./passport/passport.config.js";
 
 // Configure Passport
 await configurePassport();
+const __dirname = path.resolve();
 
+// 3. Initialize Express app
 const app = express();
 app.use(cors({
   origin: process.env.CLIENT_URL,
@@ -82,6 +83,14 @@ app.use(
     context: async ({ req,res }) => buildContext({ req, res }),
   }),
 );
+
+// npm run build will create your frontend and will be the optimized version of your frontend
+
+app.use(express.static(path.join(__dirname, "frontend/dist")));
+
+app.get(/.*/, (req, res) => {
+  res.sendFile(path.join(__dirname, "frontend/dist", "index.html"));
+})
 
 // Connect to MongoDB first before starting the server
 await connectDB();
