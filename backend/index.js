@@ -16,9 +16,11 @@ import connectMongo from "connect-mongodb-session"
 import mergedTypeDefs from "./typeDefs/index.js";
 import mergedResolvers from "./resolvers/index.js";
 import { configurePassport} from "./passport/passport.config.js";
+import job from './cron.js';
 
 // Configure Passport
 await configurePassport();
+job.start();
 const __dirname = path.resolve();
 
 // 3. Initialize Express app
