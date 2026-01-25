@@ -10,7 +10,7 @@ import { ApolloProvider } from "@apollo/client/react";
 const client = new ApolloClient({
   //TODO : update the uri on production
   link: new HttpLink({
-    uri: "http://localhost:4000/graphql",
+    uri: import.meta.env.VITE_NODE_ENV === "development" ? "http://localhost:4000/graphql" : "/graphql",
     credentials: "include" // to include cookies in requests to the backend
   }),
   cache: new InMemoryCache(), // Configure cache as needed
