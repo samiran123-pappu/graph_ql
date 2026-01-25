@@ -5,31 +5,106 @@ import Cards from "../components/Cards";
 import TransactionForm from "../components/TransactionForm";
 
 import { MdLogout } from "react-icons/md";
+import toast from "react-hot-toast";
+import { useMutation, useQuery } from "@apollo/client/react";
+import { LOGOUT } from "../graphql/mutations/user.mutation";
+import { GET_TRANSACTION_STATISTICS } from "../graphql/queries/transaction.query";
+import { useEffect, useState } from "react";
+import { GET_AUTHENTICATED_USER } from "../graphql/queries/user.query";
+
+
+
+// const chartData = {
+//     labels: ["Saving", "Expense", "Investment"],
+//     datasets: [
+//         {
+//             label: "%",
+//             data: [18, 8, 3],
+//             backgroundColor: ["rgba(75, 192, 192)", "rgba(255, 99, 132)", "rgba(54, 162, 235)"],
+//             borderColor: ["rgba(75, 192, 192)", "rgba(255, 99, 132)", "rgba(54, 162, 235, 1)"],
+//             borderWidth: 1,
+//             borderRadius: 30,
+//             spacing: 10,
+//             cutout: 130,
+//         },
+//     ],
+// };
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 const HomePage = () => {
-    const chartData = {
+    const { data } = useQuery(GET_TRANSACTION_STATISTICS);
+    const { data: authUserData } = useQuery(GET_AUTHENTICATED_USER);
+    const [logout, { loading, client }] = useMutation(LOGOUT, {
+        refetchQueries: ["GetAuthenticatedUser"],
+    });
+
+    const [chartData, setChartData] = useState({
         labels: ["Saving", "Expense", "Investment"],
         datasets: [
             {
-                label: "%",
-                data: [18, 8, 3],
-                backgroundColor: ["rgba(75, 192, 192)", "rgba(255, 99, 132)", "rgba(54, 162, 235)"],
-                borderColor: ["rgba(75, 192, 192)", "rgba(255, 99, 132)", "rgba(54, 162, 235, 1)"],
+                label: "$",
+                data: [],
+                backgroundColor: [],
+                borderColor: [],
                 borderWidth: 1,
                 borderRadius: 30,
                 spacing: 10,
                 cutout: 130,
             },
         ],
-    };
+    });
 
-    const handleLogout = () => {
-        console.log("Logging out...");
-    };
+    useEffect(() => {
+        if (data?.categoryStatistics) {
+            const categories = data.categoryStatistics.map((stat) => stat.category); // we gpt the each category and put them into an  array
+            const amounts = data.categoryStatistics.map((stat) => stat.amount);
+            const backgroundColors = []
+            const borderColors = []
 
-    const loading = false;
+            categories.forEach((category) => {
+                if (category === "saving") {
+                    backgroundColors.push("rgba(75, 192, 192)");
+                    borderColors.push("rgba(75, 192, 192)");
+                } else if (category === "expense") {
+                    backgroundColors.push("rgba(255, 99, 132)");
+                    borderColors.push("rgba(255, 99, 132)");
+                } else if (category === "investment") {
+                    backgroundColors.push("rgba(54, 162, 235)");
+                    borderColors.push("rgba(54, 162, 235)");
+                }
+            });
+
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setChartData((prev) => ({
+                labels: categories,
+                datasets: [
+                    {
+                        ...prev.datasets[0],
+                        data: amounts,
+                        backgroundColor: backgroundColors,
+                        borderColor: borderColors,
+                    }
+                ]
+            }))
+        }
+
+    }, [data]);
+
+
+    const handleLogout = async () => {
+        try {
+            await logout();
+            client.resetStore();
+            toast.success("Logged out successfully!");
+
+
+        } catch (error) {
+            toast.error("Logout failed.  Please try again.");
+            console.error("Logout Error:", error);
+
+        }
+    };
 
     return (
         <>
@@ -39,18 +114,24 @@ const HomePage = () => {
                         Spend wisely, track wisely
                     </p>
                     <img
-                        src={"https://tecdn.b-cdn.net/img/new/avatars/2.webp"}
+                        src={authUserData?.authUser.profilePicture}
                         className='w-11 h-11 rounded-full border cursor-pointer'
                         alt='Avatar'
                     />
-                    {!loading && <MdLogout className='mx-2 w-5 h-5 cursor-pointer' onClick={handleLogout} />}
+
+                    {/* 
+                    <img class="inline-block h-11 w-11 rounded-full object-cover object-center" src="https://raw.githubusercontent.com/creativetimofficial/public-assets/master/ct-assets/team-4.jpg" alt="profile-picture" /> */}
+
+                    {!loading && <MdLogout className='mx-2 w-5 h-5 cursor-pointer text-white' onClick={handleLogout} />}
                     {/* loading spinner */}
                     {loading && <div className='w-6 h-6 border-t-2 border-b-2 mx-2 rounded-full animate-spin'></div>}
                 </div>
                 <div className='flex flex-wrap w-full justify-center items-center gap-6'>
-                    <div className='h-[330px] w-[330px] md:h-[360px] md:w-[360px]  '>
-                        <Doughnut data={chartData} />
-                    </div>
+                    {data?.categoryStatistics.length > 0 && (
+                        <div className='h-[330px] w-[330px] md:h-[360px] md:w-[360px]'>
+                            <Doughnut data={chartData} />
+                        </div>
+                    )}
 
                     <TransactionForm />
                 </div>

@@ -1,4 +1,5 @@
 import Transaction from "../models/transaction.model.js";
+import User from "../models/user.model.js";
 
 const transactionResolver = {
     Query:{
@@ -26,8 +27,35 @@ const transactionResolver = {
               
                 
             }
+        },
+
+        categoryStatistics: async(_, __, context) => {
+            const userId = context.getUser()._id;
+            const transactions = await Transaction.find({userId});
+            const categoryMap={};
+
+
+            // const transactions = [
+			// 	{ category: "expense", amount: 50 },
+			// 	{ category: "expense", amount: 75 },
+			// 	{ category: "investment", amount: 100 },
+			// 	{ category: "saving", amount: 30 },
+			// 	{ category: "saving", amount: 20 }
+			// ];
+
+
+            transactions.forEach((transaction) => {
+                if(!categoryMap[transaction.category]){
+                    categoryMap[transaction.category] = 0;
+                }
+                categoryMap[transaction.category] += transaction.amount;
+            })
+            
+			// categoryMap = { expense: 125, investment: 100, saving: 50 }
+            return Object.entries(categoryMap).map(([category, amount])=>({category, amount: amount})); //convert obj to array
+            	// return [ { category: "expense", amount: 125 }, { category: "investment", amount: 100 }, { category: "saving", amount: 50 } ]
+
         }
-        // TODO => add categoryStatistics query
 
     },
     Mutation:{
@@ -67,7 +95,19 @@ const transactionResolver = {
             }
         }
     },
-    // TODO => add transaction/user relationship resolver
+    Transaction: {
+        user: async (parent) => {
+            const userId = parent.userId;
+            try {
+                const user = await User.findById(userId);
+                return user;
+            } catch (error) {
+                console.error("Error fetching user for transaction:", error);
+                throw new Error("Error fetching user for transaction");
+            }
+
+        }
+    }
 }
 
 export default transactionResolver;

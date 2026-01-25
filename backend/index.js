@@ -22,6 +22,14 @@ import { configurePassport} from "./passport/passport.config.js";
 await configurePassport();
 
 const app = express();
+app.use(cors({
+  origin: process.env.CLIENT_URL,
+  credentials: true,
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
+
+
 const PORT = process.env.PORT || 4000;
 const httpServer = http.createServer(app);
 const MongoDBStore = connectMongo(session);
@@ -42,12 +50,13 @@ app.use(
       maxAge: 1000 * 60 * 60 * 24 * 7, //1 week
       httpOnly: true, //xss protection
     },
-    store: store,
   })
 );
 
 app.use(passport.initialize());
 app.use(passport.session());
+
+
 
 // 4. Create the Apollo Server instance
 const server = new ApolloServer({
@@ -63,7 +72,7 @@ await server.start();
 
 // Express middleware setup
 app.use(
-  '/',
+  '/graphql',
   cors({
     origin: process.env.CLIENT_URL,
     credentials: true,
@@ -74,11 +83,12 @@ app.use(
   }),
 );
 
+// Connect to MongoDB first before starting the server
+await connectDB();
+
 // Start HTTP Server
 await new Promise((resolve) =>
   httpServer.listen({ port: PORT }, resolve)
 );
 
-await connectDB();
-
-console.log(`🚀 Server ready at http://localhost:${PORT}/`);
+console.log(`🚀 Server ready at http://localhost:${PORT}/graphql`);
