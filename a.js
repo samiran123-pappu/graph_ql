@@ -1,6 +1,6 @@
 let a = 7
 let b = 7
-function a(a, b){
+function d(a, b){
     return a + b
 }
-console.log(a())
+console.log(d(a, b))
